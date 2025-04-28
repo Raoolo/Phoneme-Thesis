@@ -2,7 +2,7 @@
 
 [![official paper](https://img.shields.io/badge/paper-EACL%202024-b31b1b.svg)](https://aclanthology.org/2024.eacl-long.136/)
 
-This repository contains the code for the paper ["Explaining Speech Classification Models via Word-Level Audio Segments and Paralinguistic Features"](https://aclanthology.org/2024.eacl-long.136/), accepted at the 18th Conference of the European Chapter of the Association for Computational Linguistics (EACL) 2024, long paper.  
+This repository contains the code for the extension to phoneme level of the paper ["Explaining Speech Classification Models via Word-Level Audio Segments and Paralinguistic Features"](https://aclanthology.org/2024.eacl-long.136/), accepted at the 18th Conference of the European Chapter of the Association for Computational Linguistics (EACL) 2024, long paper.  
 
 We propose a novel approach to explain speech classification models 🗣️💬
 
@@ -10,12 +10,14 @@ We provide two types of insights. 🚀
 
 (i) Word-level. We measure the impact of each audio segment aligned with a word on the outcome. 
 
-(ii) Paralinguistic. We evaluate how non-linguistic features (e.g., prosody and background noise) affect the outcome if perturbed.
+(ii) Phoneme-level.  We measure the impact of each audio segment aligned with a phoneme on the outcome. 
+
+(iii) Paralinguistic. We evaluate how non-linguistic features (e.g., prosody and background noise) affect the outcome if perturbed.
 
 
 ## How-to  
 
-The code below provides a minimal example on how to generate word-level audio segment and paralinguistic attributions.
+The code below provides a minimal example on how to generate word-level or phoneme-level audio segment and paralinguistic attributions.
 
 We start by loading the model to explain
 ```python
@@ -37,7 +39,9 @@ benchmark = Benchmark(model, feature_extractor)
 
 explanation = benchmark.explain(
     audio_path=audio_path, 
-    methodology='LOO')
+    methodology='LOO',
+    phonemization=False,
+)
 
 display(benchmark.show_table(explanation, decimals=3)),
 ```
