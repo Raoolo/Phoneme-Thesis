@@ -232,6 +232,7 @@ class Benchmark:
         audio_paths: List[str],
         target_class: str = None,
         methodology: str = "LOO",
+        aggregate: bool = False,
         **explainer_kwargs,
     ) -> Union[Dict[str, float], Dict[str, Dict[str, float]]]:
         """
@@ -241,6 +242,7 @@ class Benchmark:
 
         # dictionary to keep aggregated scores, for multi label I use a double nested dictionary
         global_scores = {}
+        explanations = []
 
         for audio_path in audio_paths:
             # get the explanation for each audio
@@ -251,44 +253,45 @@ class Benchmark:
             if not explanation:
                 print(f"No valid transcription found for {audio_path}. Skipping audio.")
                 continue
+            explanations.append(explanation)
 
+            if aggregate:
+                if self.model_helper.n_labels > 1:
+                    # multi label
+                    label_names = self.model_helper.get_text_labels_with_class(explanation.target)
+                    # iterate over each label
+                    for j, label in enumerate(label_names):
+                        if label not in global_scores:      # create key if not present already
+                            global_scores[label] = {}
+                        for i, phoneme in enumerate(explanation.features):  # for each phoneme
+                            score = explanation.scores[j, i]        # take the score associated
+                            if phoneme not in global_scores[label]:     # create phoneme key if not present
+                                global_scores[label][phoneme] = []
+                            global_scores[label][phoneme].append(score)     # append the score
+                else:
+                    # single label
+                    for i, phoneme in enumerate(explanation.features):
+                        score = explanation.scores[i]
+                        if phoneme not in global_scores:
+                            global_scores[phoneme] = []
+                        global_scores[phoneme].append(score)
+
+            #print(f"Global explanations: {global_scores}")      # debug print
+            # print(f"Global explanations: {len(global_scores)}")
+
+            # compute average score for each phoneme
             if self.model_helper.n_labels > 1:
-                # multi label
-                label_names = self.model_helper.get_text_labels_with_class(explanation.target)
-                # iterate over each label
-                for j, label in enumerate(label_names):
-                    if label not in global_scores:      # create key if not present already
-                        global_scores[label] = {}
-                    for i, phoneme in enumerate(explanation.features):  # for each phoneme
-                        score = explanation.scores[j, i]        # take the score associated
-                        if phoneme not in global_scores[label]:     # create phoneme key if not present
-                            global_scores[label][phoneme] = []
-                        global_scores[label][phoneme].append(score)     # append the score
+                avg_scores = {}
+                for label, phoneme_scores in global_scores.items():
+                    avg_scores[label] = {phoneme: np.mean(scores) for phoneme, scores in phoneme_scores.items()}
             else:
-                # single label
-                # TODO Check if this is right
-                for i, phoneme in enumerate(explanation.features):
-                    score = explanation.scores[i]
-                    if phoneme not in global_scores:
-                        global_scores[phoneme] = []
-                    global_scores[phoneme].append(score)
+                avg_scores = {phoneme: np.mean(scores) for phoneme, scores in global_scores.items()}
 
-        #print(f"Global explanations: {global_scores}")      # debug print
-        # print(f"Global explanations: {len(global_scores)}")
-
-        # compute average score for each phoneme
-        if self.model_helper.n_labels > 1:
-            avg_scores = {}
-            for label, phoneme_scores in global_scores.items():
-                avg_scores[label] = {phoneme: np.mean(scores) for phoneme, scores in phoneme_scores.items()}
-        else:
-            avg_scores = {phoneme: np.mean(scores) for phoneme, scores in global_scores.items()}
-
-        # print(f"Global explanations: {len(avg_scores)}")        # debug print
+            # print(f"Global explanations: {len(avg_scores)}")        # debug print
 
 
 
-        return avg_scores
+        return avg_scores, explanations
 
     def create_table(
         self,
